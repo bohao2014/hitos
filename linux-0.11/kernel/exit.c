@@ -127,6 +127,12 @@ int do_exit(long code)
 	if (current->leader)
 		kill_session();
 	current->state = TASK_ZOMBIE;
+
+	/*
+	*修改--退出一个进程
+	*/
+	fprintk(3,"%d\tE\t%d\n",current->pid,jiffies);
+
 	current->exit_code = code;
 	tell_father(current->father);
 	schedule();
@@ -184,6 +190,12 @@ repeat:
 		if (options & WNOHANG)
 			return 0;
 		current->state=TASK_INTERRUPTIBLE;
+
+		/*
+		*修改--当前进程 => 等待
+		*/
+		fprintk(3,"%d\tW\t%d\n",current->pid,jiffies);
+
 		schedule();
 		if (!(current->signal &= ~(1<<(SIGCHLD-1))))
 			goto repeat;

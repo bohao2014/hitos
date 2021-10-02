@@ -115,8 +115,10 @@ void schedule(void)
 					(*p)->alarm = 0;
 				}
 			if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) &&
-			(*p)->state==TASK_INTERRUPTIBLE)
+			(*p)->state==TASK_INTERRUPTIBLE) {
 				(*p)->state=TASK_RUNNING;
+                fprintk(3,"%d\tJ\t%d\n",(*p)->pid,jiffies);
+            }
 		}
 
 /* this is the scheduler proper: */
@@ -137,13 +139,29 @@ void schedule(void)
 			if (*p)
 				(*p)->counter = ((*p)->counter >> 1) +
 						(*p)->priority;
+    }
+
+    if(current->pid != task[next] ->pid)
+	{
+		/*新建修改--时间片到时程序 => 就绪*/
+		if(current->state == TASK_RUNNING)
+			fprintk(3,"%d\tJ\t%d\n",current->pid,jiffies);
+		fprintk(3,"%d\tR\t%d\n",task[next]->pid,jiffies);
 	}
+
 	switch_to(next);
 }
 
 int sys_pause(void)
 {
 	current->state = TASK_INTERRUPTIBLE;
+
+    /*
+	*修改--当前进程  运行 => 可中断睡眠
+	*/
+	if(current->pid != 0)
+		fprintk(3,"%d\tW\t%d\n",current->pid,jiffies);
+
 	schedule();
 	return 0;
 }
@@ -159,9 +177,22 @@ void sleep_on(struct task_struct **p)
 	tmp = *p;
 	*p = current;
 	current->state = TASK_UNINTERRUPTIBLE;
+
+	/*
+	*修改--当前进程进程 => 不可中断睡眠
+	*/
+	fprintk(3,"%d\tW\t%d\n",current->pid,jiffies);
+
 	schedule();
 	if (tmp)
+    {
 		tmp->state=0;
+
+		/*
+		*修改--原等待队列 第一个进程 => 唤醒（就绪）
+		*/
+		fprintk(3,"%d\tJ\t%d\n",tmp->pid,jiffies);
+    }
 }
 
 void interruptible_sleep_on(struct task_struct **p)
@@ -175,20 +206,42 @@ void interruptible_sleep_on(struct task_struct **p)
 	tmp=*p;
 	*p=current;
 repeat:	current->state = TASK_INTERRUPTIBLE;
+
+	/*
+	*修改--唤醒队列中间进程，过程中使用Wait
+	*/
+	fprintk(3,"%d\tW\t%d\n",current->pid,jiffies);
+
 	schedule();
 	if (*p && *p != current) {
 		(**p).state=0;
+
+		/*
+		*修改--当前进程进程 => 可中断睡眠
+		*/
+		fprintk(3,"%d\tJ\t%d\n",(*p)->pid,jiffies);
+
 		goto repeat;
 	}
 	*p=NULL;
-	if (tmp)
+	if (tmp) {
 		tmp->state=0;
+
+        /*
+		*修改--原等待队列 第一个进程 => 唤醒（就绪）
+		*/
+		fprintk(3,"%d\tJ\t%d\n",tmp->pid,jiffies);
+    }
 }
 
 void wake_up(struct task_struct **p)
 {
 	if (p && *p) {
 		(**p).state=0;
+        /*
+		*修改--唤醒 最后进入等待序列的 进程
+		*/
+		fprintk(3,"%d\tJ\t%d\n",(*p)->pid,jiffies);
 		*p=NULL;
 	}
 }
