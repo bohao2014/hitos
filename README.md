@@ -3,7 +3,7 @@
 - copy files under hitos/mount_files to hitos/hdc/usr/root to uplad the fies on the os
 - if mount failed, try more times with same cmd.
 
-## lab4 notes
+## lab4_2 notes
 - main reference to this lab: https://www.cnblogs.com/mirage-mc/p/12899929.html
 - \<ws root\>/Code includes the orignal tool files for this lab, including process.c and stats_log.py.
 - chose to use \<ws root\>/mount_files/process_cnb.c to compile the process program on linux 0.11
@@ -12,4 +12,6 @@
   different time slice setting. process_new.c waits for all child processes to complete(compiled as 
   process for now on linux-0.11).  For this case, throughput will be the same no matter of what the 
   time slice is.
+- This repository contain both lab4 and lab5 contents.  Therefore, process log can be used to check
+  process management when using kernal stack instead of tss for task switch.
 
