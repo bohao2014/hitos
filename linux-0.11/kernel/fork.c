@@ -18,6 +18,7 @@
 #include <asm/system.h>
 
 extern void write_verify(unsigned long address);
+extern void first_return_from_kernel(void);
 
 long last_pid=0;
 
@@ -74,6 +75,7 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	struct task_struct *p;
 	int i;
 	struct file *f;
+    long * krnstack;
 
 	p = (struct task_struct *) get_free_page();
 	if (!p)
@@ -93,6 +95,7 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 
     fprintk(3,"%d\tN\t%d\n",p->pid,jiffies);
 
+    /* comment tss related code
 	p->tss.back_link = 0;
 	p->tss.esp0 = PAGE_SIZE + (long) p;
 	p->tss.ss0 = 0x10;
@@ -114,6 +117,7 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->tss.gs = gs & 0xffff;
 	p->tss.ldt = _LDT(nr);
 	p->tss.trace_bitmap = 0x80000000;
+    */
 	if (last_task_used_math == current)
 		__asm__("clts ; fnsave %0"::"m" (p->tss.i387));
 	if (copy_mem(nr,p)) {
@@ -121,6 +125,32 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 		free_page((long) p);
 		return -EAGAIN;
 	}
+    //2nd
+    krnstack = (long *) (PAGE_SIZE + (long) p);
+    *(--krnstack) = ss & 0xffff;
+    *(--krnstack) = esp;
+    *(--krnstack) = eflags;
+    *(--krnstack) = cs & 0xffff;
+    *(--krnstack) = eip;
+
+    *(--krnstack) = ds & 0xffff;
+    *(--krnstack) = es & 0xffff;
+    *(--krnstack) = fs & 0xffff;
+    *(--krnstack) = gs & 0xffff;
+    *(--krnstack) = esi;
+    *(--krnstack) = edi;
+    *(--krnstack) = edx;
+//3rd
+	*(--krnstack) = first_return_from_kernel;
+//4th
+    *(--krnstack) = ebp;
+    *(--krnstack) = ecx;
+    *(--krnstack) = ebx;
+    *(--krnstack) = 0;
+//5th
+	p->kernelstack = krnstack;
+//end modification
+
 	for (i=0; i<NR_OPEN;i++)
 		if ((f=p->filp[i]))
 			f->f_count++;

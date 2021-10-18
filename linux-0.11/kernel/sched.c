@@ -50,6 +50,8 @@ extern void mem_use(void);
 extern int timer_interrupt(void);
 extern int system_call(void);
 
+extern long switch_to(struct task_struct *p, unsigned long address);
+
 union task_union {
 	struct task_struct task;
 	char stack[PAGE_SIZE];
@@ -101,10 +103,12 @@ void math_state_restore()
  * tasks can run. It can not be killed, and it cannot sleep. The 'state'
  * information in task[0] is never used.
  */
+struct task_struct *tss= &(init_task.task.tss);
 void schedule(void)
 {
 	int i,next,c;
 	struct task_struct ** p;
+    struct task_struct* pnext = &(init_task.task);
 
 /* check alarm, wake up any interruptible tasks that have got a signal */
 
@@ -132,7 +136,7 @@ void schedule(void)
 			if (!*--p)
 				continue;
 			if ((*p)->state == TASK_RUNNING && (*p)->counter > c)
-				c = (*p)->counter, next = i;
+				c = (*p)->counter, next = i, pnext = *p;
 		}
 		if (c) break;
 		for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
@@ -149,7 +153,8 @@ void schedule(void)
 		fprintk(3,"%d\tR\t%d\n",task[next]->pid,jiffies);
 	}
 
-	switch_to(next);
+	//switch_to(next);
+	switch_to(pnext, _LDT(next));
 }
 
 int sys_pause(void)
