@@ -1,4 +1,4 @@
-# hitos (lab6 semaphore)
+# hitos (lab7 shared memory, based on lab6 semaphore)
 
 - copy files under hitos/mount_files to hitos/hdc/usr/root to uplad the fies on the os
 - if mount failed, try more times with same cmd
